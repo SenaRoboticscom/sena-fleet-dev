@@ -11,8 +11,10 @@
  * Sin dependencias: solo node:http, para que se lea de un vistazo.
  *
  * Lo que simula:
- *   · DEMO-001 y DEMO-002 en línea; DEMO-003 DESCONECTADO a propósito (para ver
- *     cómo se comporta la plataforma con un robot caído).
+ *   · Tres robots POR CUENTA: DEMO-001…003 sin cuenta, y ACME-001…003 si las
+ *     credenciales traen { "cuenta": "ACME" }. El 001 y el 002 en línea; el 003
+ *     DESCONECTADO a propósito (para ver cómo se comporta la plataforma con un
+ *     robot caído).
  *   · Una misión tarda DEMO_TRAVEL_S (def. 20 s): 'moving' → llega → 'idle'.
  *   · La batería baja moviéndose y sube cargando.
  *
@@ -39,17 +41,39 @@ const PUNTOS = [
   ...[1, 2, 3, 4, 5].map((n) => ({ pointId: `mesa-${n}`, name: `Mesa ${n}`, type: 'table' })),
 ];
 
-const robots = new Map([
-  ['DEMO-001', { name: 'Demo Uno', online: true, battery: 90, state: 'idle', mision: null, pos: 'base' }],
-  ['DEMO-002', { name: 'Demo Dos', online: true, battery: 55, state: 'charging', mision: null, pos: 'base' }],
-  ['DEMO-003', { name: 'Demo Tres', online: false, battery: 12, state: 'offline', mision: null, pos: 'recepcion' }],
-]);
+// Cada cuenta de cliente tiene SUS robots. La cuenta llega en X-Adapter-Context,
+// como llegarían las credenciales de una marca de verdad. Así, en un entorno de
+// pruebas compartido, cada desarrollador tiene los suyos: el número de serie de
+// un robot es único en toda la plataforma.
+const MAX_CUENTAS = 50;
+const cuentas = new Map(); // prefijo → Map(robotId → robot)
+
+function robotsNuevos(prefijo) {
+  return new Map([
+    [`${prefijo}-001`, { name: 'Demo Uno', online: true, battery: 90, state: 'idle', mision: null, pos: 'base' }],
+    [`${prefijo}-002`, { name: 'Demo Dos', online: true, battery: 55, state: 'charging', mision: null, pos: 'base' }],
+    [`${prefijo}-003`, { name: 'Demo Tres', online: false, battery: 12, state: 'offline', mision: null, pos: 'recepcion' }],
+  ]);
+}
+
+/** Los robots de la cuenta que llama, o null si ya hay demasiadas cuentas. */
+function robotsDe(req) {
+  let ctx = {};
+  try { ctx = JSON.parse(Buffer.from(String(req.headers['x-adapter-context'] || ''), 'base64url').toString('utf8')) ?? {}; } catch {}
+  const cuenta = String(ctx?.credentials?.cuenta ?? '').trim().toUpperCase();
+  const prefijo = /^[A-Z0-9]{1,12}$/.test(cuenta) ? cuenta : 'DEMO';
+  if (!cuentas.has(prefijo)) {
+    if (cuentas.size >= MAX_CUENTAS) return null;
+    cuentas.set(prefijo, robotsNuevos(prefijo));
+  }
+  return cuentas.get(prefijo);
+}
 
 // Cada segundo: batería y llegadas. AQUÍ HABLARÍA CON LA NUBE DE LA MARCA: un
 // conector real no simula nada, pregunta a la API del fabricante y traduce.
 setInterval(() => {
   const ahora = Date.now();
-  for (const r of robots.values()) {
+  for (const r of [...cuentas.values()].flatMap((robots) => [...robots.values()])) {
     if (!r.online) continue;
     if (r.state === 'moving') r.battery = Math.max(0, r.battery - 0.2);
     if (r.state === 'charging') r.battery = Math.min(100, r.battery + 0.5);
@@ -108,7 +132,9 @@ const server = http.createServer(async (req, res) => {
 
   // La plataforma manda en X-Adapter-Context las credenciales de la cuenta del
   // cliente. Un conector real las usaría para hablar con la nube de la marca;
-  // este no las necesita. NUNCA se registran en el log.
+  // este solo mira `cuenta` para saber qué robots enseñar. NUNCA se registran en el log.
+  const robots = robotsDe(req);
+  if (!robots) return error(res, 429, 'rate_limited', 'demasiadas cuentas de demostración');
 
   if (req.method === 'GET' && p === '/capabilities') {
     return ok(res, { capabilities: ['send_mission', 'control_mission', 'return_to_charge', 'live_location', 'list_points', 'discovery'] });

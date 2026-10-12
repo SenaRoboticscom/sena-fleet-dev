@@ -17,6 +17,7 @@ flotas de robots de SENA Robotics:
 | [`docs/contrato-conector.md`](docs/contrato-conector.md) | El contrato que cumple un conector: autenticación, rutas, estados, modelos y errores |
 | [`docs/api-v1.md`](docs/api-v1.md) | API pública v1: consultar la flota y mandar misiones |
 | [`docs/webhooks.md`](docs/webhooks.md) | Webhooks: eventos, firma y reintentos |
+| [`docs/sandbox.md`](docs/sandbox.md) | Entorno de pruebas: tu cliente y tus robots simulados para probar la API y los webhooks |
 | [`connector-demo/`](connector-demo/) | Plantilla: un conector completo con tres robots simulados |
 | [`tools/probar-conector.mjs`](tools/probar-conector.mjs) | Comprobador del contrato: pásalo en verde antes de pedir el alta |
 | [`mcp-dev/`](mcp-dev/README.md) | MCP para que tu agente de IA (Claude Code, Cursor…) lea todo esto y pruebe tu trabajo |

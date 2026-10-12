@@ -50,9 +50,11 @@ Más clientes y ejemplos de uso en [`mcp-dev/README.md`](mcp-dev/README.md).
 
 ## Pedir el alta de un conector
 
-Cuando el comprobador sale en verde, sigue [`docs/conectores.md` §5](docs/conectores.md#5-pedir-el-alta).
-Los conectores se alojan en la infraestructura de SENA, aislados: tú entregas el
-código y nosotros lo desplegamos.
+Cuando el comprobador sale en verde, sigue [`docs/conectores.md` §5](docs/conectores.md#5-pedir-el-alta)
+y escríbenos a **desarrolladores@senarobotics.com**. Los conectores se alojan en la
+infraestructura de SENA, aislados: tú entregas el código y nosotros lo desplegamos.
+
+Para cualquier duda sobre el kit, la API o los webhooks, el mismo correo.
 
 ## Licencia
 

@@ -138,7 +138,7 @@ Cuando el comprobador sale en verde:
 
 1. Pásalo también con **una cuenta real de la marca** (`--credentials`) y, si
    puedes, con `--escritura` contra un robot de pruebas.
-2. Mándanos:
+2. Escríbenos a **desarrolladores@senarobotics.com** con:
    - el código o la imagen del conector;
    - la salida del comprobador;
    - las capacidades que declara;

@@ -1,0 +1,16 @@
+{
+  "name": "sena-mcp-dev",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP local para desarrollar conectores y apps sobre Sena Fleet: documentación, plantilla, comprobador del contrato y webhooks de prueba",
+  "main": "src/server.mjs",
+  "bin": { "sena-mcp-dev": "src/server.mjs" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

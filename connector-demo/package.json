@@ -1,0 +1,10 @@
+{
+  "name": "sena-connector-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Conector de demostración (robots virtuales) y plantilla del contrato de conectores de Sena Fleet",
+  "main": "src/server.mjs",
+  "scripts": { "start": "node src/server.mjs" },
+  "engines": { "node": ">=20" }
+}

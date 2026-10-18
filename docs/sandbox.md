@@ -25,8 +25,10 @@ privado.
 ## Empezar
 
 1. **Activa tu usuario** con el código en https://pruebas.senarobotics.cloud/activate.
-2. **Crea una clave de API** en **Configuración → API**, con permisos `read` y
-   `write`. Si quieres recibir avisos, crea también un webhook (ver `docs/webhooks.md`):
+2. **Crea una clave de API** en **Configuración → API**. Para probarlo todo, marca
+   los cuatro permisos: ver robots, ver misiones, mandar robots y cancelar sus
+   misiones (ver `docs/api-v1.md`). Si quieres recibir avisos, crea también un
+   webhook (ver `docs/webhooks.md`):
    - tiene que ser una dirección pública, con `https`;
    - el entorno de pruebas no envía a direcciones privadas ni a `localhost`.
 3. **Mira tus robots:**
@@ -44,7 +46,9 @@ privado.
      -d '{"robot_sn":"TUCUENTA-001","point_id":"mesa-3"}'
    ```
 
-5. **Mira llegar los avisos** `mission.created` y `mission.status_changed` a tu
+5. **Cancélala si quieres:** `POST /v1/missions/<id>/cancel`, con el `id` que te
+   devolvió el paso anterior.
+6. **Mira llegar los avisos** `mission.created` y `mission.status_changed` a tu
    webhook. Para el `-003` recibirás un error: está desconectado.
 
 ## Ten en cuenta

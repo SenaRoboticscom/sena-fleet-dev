@@ -22,8 +22,19 @@ automatización). Con la API **preguntas** a la plataforma; para que ella te
   repositorio.
 - **Qué ves:** con una clave de **cliente**, sus robots. Con una de
   **distribuidor**, los suyos y los que ha vendido. Lo mismo que en el panel.
-- **Permisos de la clave:** `read` para consultar (GET) y `write` para mandar
-  misiones (POST).
+- **Permisos de la clave:** se eligen al crearla, y conviene dar solo los que
+  hagan falta.
+
+  | Permiso | Para qué | Rutas |
+  |---|---|---|
+  | `robots:read` | Ver los robots y su estado | `GET /v1/robots` |
+  | `missions:read` | Ver las misiones | `GET /v1/missions` |
+  | `missions:write` | **Mandar robots a un punto: mueve robots de verdad** | `POST /v1/missions` |
+  | `robots:control` | **Cancelar las misiones que mandó esa misma clave** | `POST /v1/missions/:id/cancel` |
+
+  Las claves antiguas siguen valiendo igual: `read` equivale a `robots:read` y
+  `missions:read`, y `write` a `missions:write`. Ninguna clave antigua tiene
+  `robots:control`: hay que darlo a propósito.
 - **Límite:** 120 peticiones por minuto y clave. Si lo pasas, `429` con la cabecera
   `Retry-After` (segundos que hay que esperar).
 
@@ -108,6 +119,41 @@ segundos: suscríbete a `mission.status_changed` (`docs/webhooks.md`).
 Hoy se pueden mandar misiones por API a robots **Keenon** y a los de marcas
 conectadas por **conector**. Para el resto, `422` con `op_unsupported_via_api`.
 
+**Antes de mandarlo, la plataforma comprueba que el robot está en condiciones.**
+Si sabe que está desconectado (`robot_offline`), en error o en un estado que no
+reconoce (`robot_not_ready`), no lo manda. Responde `422` con `send_failed` y no
+mueve nada.
+
+**Un robot, un controlador.** Si el robot está en una misión de **otro**
+(alguien desde el panel, la cola de pedidos del restaurante u otra integración),
+recibes `robot_busy` y no se interrumpe nada. Si es otra integración, la
+respuesta trae `busy_until`: lo más tarde que lo tendrá.
+
+**Horario del cliente.** Cada cliente puede limitar las horas en que las
+integraciones mueven sus robots (por ejemplo, solo en el servicio de comida y de
+cena). Fuera de ese horario recibes `outside_hours`, con `franjas` y `timezone`
+para que sepas cuándo volver. Cancelar tus misiones se puede siempre.
+
+Tu propia clave sí puede encadenar misiones con el mismo robot. Las personas que
+usan el panel siempre pueden mandarlo: la persona manda sobre cualquier integración.
+
+## POST /v1/missions/:id/cancel
+
+Cancela una misión **que mandó tu misma clave** (permiso `robots:control`). Las
+de otros (personas desde el panel, la cola del restaurante u otras integraciones)
+no se pueden cancelar desde la API: responde `404` como si no existieran.
+
+Respuesta `200`:
+
+```json
+{ "ok": true, "mission": { "id": "…", "status": "cancelled" } }
+```
+
+- **Si ya estaba cancelada,** responde lo mismo: se puede repetir sin miedo.
+- **Si ya había terminado** (completada o fallida): `422` con `mission_not_active`.
+- **Si la marca se niega** (por ejemplo, porque el robot ya está llegando): `422`
+  con `send_failed` y su `code`. **No se fuerza nada:** la misión sigue como estaba.
+
 ## Errores
 
 Siempre `{ "ok": false, "error": "<código>" }`, a veces con `detail`:
@@ -115,18 +161,23 @@ Siempre `{ "ok": false, "error": "<código>" }`, a veces con `detail`:
 | HTTP | `error` | Qué pasa |
 |---|---|---|
 | 401 | `missing_api_key`, `invalid_api_key` | Falta la clave, o no existe o está revocada |
-| 403 | `insufficient_scope` | La clave no tiene el permiso (`required` dice cuál) |
+| 403 | `insufficient_scope` | La clave no tiene el permiso: `required` dice cuál (por ejemplo, `missions:write`) |
 | 429 | `rate_limited` | Demasiadas peticiones: espera `retry_after` segundos |
 | 400 | `missing_robot_sn`, `missing_point` | Falta un dato en el cuerpo |
 | 404 | `robot_not_found` | El robot no existe **o no es tuyo**: no se distingue a propósito |
+| 404 | `mission_not_found` | Al cancelar: la misión no existe **o no la mandó tu clave** |
+| 422 | `mission_not_active` | Al cancelar: la misión ya había terminado |
 | 422 | `op_unsupported_via_api` | Esa marca aún no admite misiones por API |
-| 422 | `send_failed` | La marca rechazó la orden. `code` dice por qué (tabla de abajo) |
+| 422 | `send_failed` | No se mandó: el robot no estaba en condiciones o la marca rechazó la orden. `code` dice por qué (tabla de abajo) |
 
 Los `code` de `send_failed` más habituales:
 
 | `code` | ¿Reintentar? |
 |---|---|
-| `robot_offline`, `robot_busy` | Sí, más tarde |
+| `robot_offline`, `robot_busy` | Sí, más tarde. Con `robot_busy` por otra integración, `busy_until` dice hasta cuándo como mucho |
+| `outside_hours` | Sí, dentro del horario del cliente (`franjas`, en su `timezone`) |
+| `rental_blocked` | No: el robot es de alquiler y su contrato está bloqueado por impago. Avisa al administrador de la cuenta |
+| `robot_not_ready` | No hasta que lo revisen: el robot está en error o en un estado que la plataforma no reconoce (`state` dice cuál) |
 | `upstream_timeout`, `upstream_error`, `rate_limited` | Sí, con espera y la **misma** `Idempotency-Key` |
 | `point_not_found`, `invalid_request` | No: corrige la petición |
 | `op_unsupported`, `auth_failed` | No: avisa al administrador de la cuenta |
